@@ -1,0 +1,92 @@
+name: Android CI Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Check Project Files
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo "Project files:"
+          ls -la
+
+          echo "Searching for settings.gradle:"
+          find . -name "settings.gradle" -o -name "settings.gradle.kts"
+
+          echo "Searching for build.gradle:"
+          find . -name "build.gradle" -o -name "build.gradle.kts"
+
+      - name: Build Debug APK
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace
+          elif [ -f "./AmarOvertime-Android-Project-v1.1/AmarOvertimeAndroid/gradlew" ]; then
+            cd ./AmarOvertime-Android-Project-v1.1/AmarOvertimeAndroid
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace
+          elif [ -f "./AmarOvertimeAndroid/gradlew" ]; then
+            cd ./AmarOvertimeAndroid
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace
+          else
+            echo "Gradle wrapper not found."
+            echo "Trying system Gradle..."
+
+            if [ -f "./AmarOvertime-Android-Project-v1.1/AmarOvertimeAndroid/settings.gradle" ]; then
+              cd ./AmarOvertime-Android-Project-v1.1/AmarOvertimeAndroid
+              gradle assembleDebug --stacktrace
+            elif [ -f "./AmarOvertimeAndroid/settings.gradle" ]; then
+              cd ./AmarOvertimeAndroid
+              gradle assembleDebug --stacktrace
+            elif [ -f "./settings.gradle" ]; then
+              gradle assembleDebug --stacktrace
+            else
+              echo "Android Gradle project could not be found."
+              exit 1
+            fi
+          fi
+
+      - name: Find APK
+        run: |
+          echo "Searching for generated APK..."
+          find . -type f -name "*.apk" -print
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AmarOvertime-debug-apk
+          path: |
+            **/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
